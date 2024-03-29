@@ -1,0 +1,13 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: OBVector
+    disabled: false
+    docker_tag: ann-benchmarks-oceanbase_ivf
+    module: ann_benchmarks.algorithms.oceanbase_ivf
+    name: oceanbase_ivf
+    run_groups:
+      base:
+        args: []
+        args: {}
+        query_args: [[1,5,10,15,20]]
