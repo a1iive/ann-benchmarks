@@ -1,3 +1,4 @@
+ip=127.0.0.1
 mysql_port=2881
 rpc_port=2882
 obshell_port=2886

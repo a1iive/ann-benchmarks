@@ -10,4 +10,4 @@ float:
       base:
         args: []
         args: {}
-        query_args: [[1,5,10,15,20]]
+        query_args: [[1,5,10,15,20,25,30]]

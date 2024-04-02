@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 
 import pymysql as mysql # need to pip install
 
@@ -8,10 +9,6 @@ from ..base.module import BaseANN
 
 class OBVector(BaseANN):
     def __init__(self, metric, method_param):
-        try:
-            result = subprocess.run('/root/systemctl start oceanbase', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        except subprocess.CalledProcessError as e:
-            print("错误：", e)
         self._metric = metric
         self._cur = None
         self._query_probes = None
@@ -24,11 +21,13 @@ class OBVector(BaseANN):
             raise RuntimeError(f"unknown metric {metric}")
 
     def fit(self, X):
+        #time.sleep(3600)
+        subprocess.run('/bin/bash /home/admin/oceanbase/profile/oceanbase-service.sh start', shell=True, check=True, stdout=sys.stdout, stderr=sys.stderr)
         conn = mysql.connect(host="127.0.0.1", user="root@perf", port=2881, passwd="", database="test")
         cur = conn.cursor()
 
         cur.execute("DROP TABLE IF EXISTS items")
-        cur.execute("CREATE TABLE items (id int, embedding vector(%d), primary key (id)) partition by key(id) partitions 100" % X.shape[1])
+        cur.execute("CREATE TABLE items (id int, embedding vector(%d), primary key (id))" % X.shape[1])
         cur.execute("set autocommit=1")
         print("copying data: data size: %d..." % X.shape[0])
         for i, embedding in enumerate(X):
@@ -47,7 +46,7 @@ class OBVector(BaseANN):
         if self._metric == "angular":
             cur.execute("CREATE INDEX items_ivfflat_idx ON items (embedding cosine) USING ivfflat with(lists=245)")
         elif self._metric == "euclidean":
-            cur.execute("CREATE /*+parallel(50)*/INDEX items_ivfflat_idx ON items (embedding l2) USING ivfflat with(lists=8)")
+            cur.execute("CREATE INDEX items_ivfflat_idx ON items (embedding l2) USING ivfflat with(lists=245)")
         print("{}: finish create index! build index in {}".format(datetime.now(), datetime.now()-index_start_time))
 
         cur.execute("alter system minor freeze")

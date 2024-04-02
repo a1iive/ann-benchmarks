@@ -23,7 +23,7 @@ RUN service postgresql start && \
     psql -d ann -c "CREATE EXTENSION vector" && \
     psql -c "ALTER USER ann SET maintenance_work_mem = '4GB'" && \
     psql -c "ALTER USER ann SET max_parallel_maintenance_workers = 0" && \
-    psql -c "ALTER SYSTEM SET shared_buffers = '4GB'"
+    psql -c "ALTER SYSTEM SET shared_buffers = '8GB'"
 USER root
 
 RUN pip install psycopg[binary] pgvector
