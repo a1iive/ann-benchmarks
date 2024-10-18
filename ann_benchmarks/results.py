@@ -52,10 +52,14 @@ def store_results(dataset_name: str, count: int, definition: Definition, query_a
         batch (bool): If True, the batch mode is activated.
     """
     filename = build_result_filepath(dataset_name, count, definition, query_arguments, batch)
-    directory, _ = os.path.split(filename)
-
+    directory, file = os.path.split(filename)
+    
     if not os.path.isdir(directory):
         os.makedirs(directory)
+
+    file_count = len([name for name in os.listdir(directory) if os.path.isfile(os.path.join(directory, name))])
+    new_file = f"{file_count}_{file}"
+    filename = os.path.join(directory, new_file)
 
     with h5py.File(filename, "w") as f:
         for k, v in attrs.items():
@@ -86,6 +90,7 @@ def load_all_results(dataset: Optional[str] = None,
     """
     for root, dirs, files in os.walk(build_result_filepath(dataset, count)):
         dirs.sort()
+        #files.sort(key=lambda name: os.stat(os.path.join(root, name)).st_ctime)
         files.sort()
         for filename in files:
             if os.path.splitext(filename)[-1] != ".hdf5":

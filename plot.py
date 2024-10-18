@@ -97,9 +97,9 @@ def create_plot(all_data, raw, x_scale, y_scale, xn, yn, fn_out, linestyles, bat
     plt.close()
 
 # 要处理的容器列表
-containers = ["0f4aa91680be", "0486d9789e93", "b1eebee8f8a7"]
+containers = []
 # 生成文件的目录
-output_directory = "/home/ubuntu/ann-benchmarks-vsag/results/fashion-mnist-784-euclidean/10/hnswlib"
+output_directory = "/home/ubuntu/ann-benchmarks-vsag/results/fashion-mnist-784-euclidean/10/vsag"
 
 def send_signal(container_name):
     """向指定的容器发送 SIGUSR1 信号"""
@@ -176,7 +176,7 @@ if __name__ == "__main__":
             for j in range(last_result_count, len(results)):
                 _, algo_name, metric_1_value, metric_2_value = results[j]
                 print("%80s %12.3f %12.3f" % (algo_name, metric_1_value, metric_2_value))
-                with open("/home/ubuntu/dataflow/output.txt", "a") as file:
+                with open("/home/ubuntu/dataflow/output2.txt", "a") as file:
                     file.write("%12.3f %12.3f\n" % (metric_1_value, metric_2_value))
             last_result_count = len(results)
             break
