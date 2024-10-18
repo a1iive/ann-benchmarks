@@ -84,7 +84,9 @@ def load_all_results(dataset: Optional[str] = None,
     Yields:
         tuple: A tuple containing properties as a dictionary and an h5py file object.
     """
-    for root, _, files in os.walk(build_result_filepath(dataset, count)):
+    for root, dirs, files in os.walk(build_result_filepath(dataset, count)):
+        dirs.sort()
+        files.sort()
         for filename in files:
             if os.path.splitext(filename)[-1] != ".hdf5":
                 continue
@@ -95,9 +97,9 @@ def load_all_results(dataset: Optional[str] = None,
                         continue
                     yield properties, f
             except Exception:
-                print(f"Was unable to read {filename}")
-                traceback.print_exc()
-
+                #print(f"Was unable to read {filename}")
+                #traceback.print_exc()
+                pass
 
 def get_unique_algorithms() -> Set[str]:
     """

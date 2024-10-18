@@ -25,14 +25,14 @@ def get_recall_values(dataset_distances, run_distances, count, threshold, epsilo
 
 def knn(dataset_distances, run_distances, count, metrics, epsilon=1e-3):
     if "knn" not in metrics:
-        print("Computing knn metrics")
+        #print("Computing knn metrics")
         knn_metrics = metrics.create_group("knn")
         mean, std, recalls = get_recall_values(dataset_distances, run_distances, count, knn_threshold, epsilon)
         knn_metrics.attrs["mean"] = mean
         knn_metrics.attrs["std"] = std
         knn_metrics["recalls"] = recalls
-    else:
-        print("Found cached result")
+    #else:
+        #print("Found cached result")
     return metrics["knn"]
 
 

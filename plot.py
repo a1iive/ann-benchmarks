@@ -5,6 +5,11 @@ import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
+import signal
+import subprocess
+import threading
+import time
+import os
 
 from ann_benchmarks.datasets import get_dataset
 from ann_benchmarks.plotting.metrics import all_metrics as metrics
@@ -91,6 +96,33 @@ def create_plot(all_data, raw, x_scale, y_scale, xn, yn, fn_out, linestyles, bat
     plt.savefig(fn_out, bbox_inches="tight")
     plt.close()
 
+# 要处理的容器列表
+containers = ["0f4aa91680be", "0486d9789e93", "b1eebee8f8a7"]
+# 生成文件的目录
+output_directory = "/home/ubuntu/ann-benchmarks-vsag/results/fashion-mnist-784-euclidean/10/hnswlib"
+
+def send_signal(container_name):
+    """向指定的容器发送 SIGUSR1 信号"""
+    subprocess.run(
+            ["docker", "kill", "-s", "SIGUSR1", container_name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL)
+
+def wait_for_file_change(initial_count):
+    """等待文件数量变化"""
+    while True:
+        current_count = len(os.listdir(output_directory))
+        if current_count > initial_count:
+            break
+        time.sleep(1)
+
+def send_main():
+    initial_file_count = len(os.listdir(output_directory))
+
+    for container in containers:
+        send_signal(container)
+        wait_for_file_change(initial_file_count)
+        initial_file_count += 1  # 更新初始文件计数
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -124,19 +156,33 @@ if __name__ == "__main__":
     parser.add_argument("--recompute", help="Clears the cache and recomputes the metrics", action="store_true")
     args = parser.parse_args()
 
+    thread = threading.Thread(target=send_main)
     if not args.output:
         args.output = "results/%s.png" % (args.dataset + ("-batch" if args.batch else ""))
-        print("writing output to %s" % args.output)
+        #print("writing output to %s" % args.output)
+        thread.start()
+        print("Start query...")
 
     dataset, _ = get_dataset(args.dataset)
     count = int(args.count)
-    unique_algorithms = get_unique_algorithms()
-    results = load_all_results(args.dataset, count, args.batch)
-    linestyles = create_linestyles(sorted(unique_algorithms))
-    runs = compute_metrics(np.array(dataset["distances"]), results, args.x_axis, args.y_axis, args.recompute)
-    if not runs:
-        raise Exception("Nothing to plot")
-
-    create_plot(
-        runs, args.raw, args.x_scale, args.y_scale, args.x_axis, args.y_axis, args.output, linestyles, args.batch
-    )
+    
+    last_result_count = 0
+    for i in range(30):
+        unique_algorithms = get_unique_algorithms()
+        results = load_all_results(args.dataset, count, args.batch)
+        linestyles = create_linestyles(sorted(unique_algorithms))
+        runs = compute_metrics(np.array(dataset["distances"]), results, args.x_axis, args.y_axis, args.recompute)
+        for algo, results in runs.items():
+            for j in range(last_result_count, len(results)):
+                _, algo_name, metric_1_value, metric_2_value = results[j]
+                print("%80s %12.3f %12.3f" % (algo_name, metric_1_value, metric_2_value))
+                with open("/home/ubuntu/dataflow/output.txt", "a") as file:
+                    file.write("%12.3f %12.3f\n" % (metric_1_value, metric_2_value))
+            last_result_count = len(results)
+            break
+        if runs:
+            create_plot(
+                runs, args.raw, args.x_scale, args.y_scale, args.x_axis, args.y_axis, args.output, linestyles, args.batch
+            )
+        time.sleep(1)
+    thread.join()

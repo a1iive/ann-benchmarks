@@ -17,8 +17,9 @@ class Glass(BaseANN):
         self.L = method_param['L']
         self.level = method_param['level']
         self.name = 'glass_(%s)' % (method_param)
-        self.dir = 'glass_indices'
+        self.dir = '/home/app/results/glass_indices'
         self.path = f'dim_{dim}_R_{self.R}_L_{self.L}.glass'
+        self.ef = 0
 
     def fit(self, X):
         if self.metric == "IP":
@@ -37,6 +38,7 @@ class Glass(BaseANN):
 
     def set_query_arguments(self, ef):
         self.searcher.set_ef(ef)
+        self.ef = ef
 
     def prepare_query(self, q, n):
         if self.metric == 'IP':
@@ -50,6 +52,9 @@ class Glass(BaseANN):
 
     def get_prepared_query_results(self):
         return self.res
+
+    def __str__(self):
+        return "%s, ef:%d" % (self.name, self.ef)
 
     def freeIndex(self):
         del self.searcher

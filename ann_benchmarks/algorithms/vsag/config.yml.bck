@@ -9,8 +9,8 @@ float:
     run_groups:
       HNSW:
         args:
-          M: [8, 12, 16, 24]
+          M: [8, 12, 16, 24, 32, 36, 48, 64]
           ef_construction: 500
-          use_int8: [4]
-          rs: [0.3]
-        query_args: [[40]]
+          use_int8: [4, 8]
+          rs: [0, 0.3, 0.5, 1]
+        query_args: [[10, 20, 30, 40, 60, 80, 120, 200, 400, 600, 800]]

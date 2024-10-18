@@ -9,7 +9,7 @@ class HnswLib(BaseANN):
         self.metric = {"angular": "cosine", "euclidean": "l2"}[metric]
         self.method_param = method_param
         # print(self.method_param,save_index,query_param)
-        # self.ef=query_param['ef']
+        self.ef=0
         self.name = "hnswlib (%s)" % (self.method_param)
 
     def fit(self, X):
@@ -24,11 +24,15 @@ class HnswLib(BaseANN):
 
     def set_query_arguments(self, ef):
         self.p.set_ef(ef)
+        self.ef = ef
 
     def query(self, v, n):
         # print(np.expand_dims(v,axis=0).shape)
         # print(self.p.knn_query(np.expand_dims(v,axis=0), k = n)[0])
         return self.p.knn_query(np.expand_dims(v, axis=0), k=n)[0][0]
+
+    def __str__(self):
+        return "%s, ef:%d" % (self.name, self.ef)
 
     def freeIndex(self):
         del self.p

@@ -10,6 +10,7 @@ import colors
 import docker
 import numpy
 import psutil
+import signal
 
 from ann_benchmarks.algorithms.base.module import BaseANN
 
@@ -193,6 +194,21 @@ def build_index(algo: BaseANN, X_train: numpy.ndarray) -> Tuple:
 
     return build_time, index_size
 
+continue_loop = False
+break_loop = False
+
+def handle_signal_a(signum, frame):
+    global continue_loop
+    print("Received signal A: Continuing loop")
+    continue_loop = True
+
+def handle_signal_b(signum, frame):
+    global break_loop
+    print("Received signal B: Exiting loop")
+    break_loop = True
+
+signal.signal(signal.SIGUSR1, handle_signal_a)
+signal.signal(signal.SIGUSR2, handle_signal_b)
 
 def run(definition: Definition, dataset_name: str, count: int, run_count: int, batch: bool) -> None:
     """Run the algorithm benchmarking.
@@ -204,6 +220,8 @@ def run(definition: Definition, dataset_name: str, count: int, run_count: int, b
         run_count (int): The number of runs.
         batch (bool): If true, runs in batch mode.
     """
+    global continue_loop
+    global break_loop
     algo = instantiate_algorithm(definition)
     assert not definition.query_argument_groups or hasattr(
         algo, "set_query_arguments"
@@ -222,21 +240,35 @@ function"""
 
         query_argument_groups = definition.query_argument_groups or [[]]  # Ensure at least one iteration
 
-        for pos, query_arguments in enumerate(query_argument_groups, 1):
-            print(f"Running query argument group {pos} of {len(query_argument_groups)}...")
-            if query_arguments:
-                algo.set_query_arguments(*query_arguments)
-            
-            descriptor, results = run_individual_query(algo, X_train, X_test, distance, count, run_count, batch)
+        need_print = True
 
-            descriptor.update({
-                "build_time": build_time,
-                "index_size": index_size,
-                "algo": definition.algorithm,
-                "dataset": dataset_name
-            })
+        while True:
+            if break_loop:
+                break
+            elif not continue_loop:
+                if need_print:
+                    print("Wait for SIGUSR1...")
+                    need_print = False
+                time.sleep(1)
+                continue
+            else:
+                need_print = True
+                for pos, query_arguments in enumerate(query_argument_groups, 1):
+                    print(f"Running query argument group {pos} of {len(query_argument_groups)}...")
+                    if query_arguments:
+                        algo.set_query_arguments(*query_arguments)
+                    
+                    descriptor, results = run_individual_query(algo, X_train, X_test, distance, count, run_count, batch)
 
-            store_results(dataset_name, count, definition, query_arguments, descriptor, results, batch)
+                    descriptor.update({
+                        "build_time": build_time,
+                        "index_size": index_size,
+                        "algo": definition.algorithm,
+                        "dataset": dataset_name
+                    })
+
+                    store_results(dataset_name, count, definition, query_arguments, descriptor, results, batch)
+                    continue_loop = False
     finally:
         algo.done()
 
@@ -328,11 +360,13 @@ def run_docker(
     if mem_limit is None:
         mem_limit = psutil.virtual_memory().available
 
+    uid = os.getuid()
+    gid = os.getgid()
     container = client.containers.run(
         definition.docker_tag,
         cmd,
         volumes={
-            os.path.abspath("/var/run/docker.sock"): {"bind": "/var/run/docker.sock", "mode": "rw"},
+            #os.path.abspath("/var/run/docker.sock"): {"bind": "/var/run/docker.sock", "mode": "rw"},
             os.path.abspath("ann_benchmarks"): {"bind": "/home/app/ann_benchmarks", "mode": "ro"},
             os.path.abspath("data"): {"bind": "/home/app/data", "mode": "ro"},
             os.path.abspath("results"): {"bind": "/home/app/results", "mode": "rw"},
@@ -341,6 +375,7 @@ def run_docker(
         cpuset_cpus=cpu_limit,
         mem_limit=mem_limit,
         detach=True,
+        user=f'{uid}:{gid}',
     )
     logger = logging.getLogger(f"annb.{container.short_id}")
 
